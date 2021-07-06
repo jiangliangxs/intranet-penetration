@@ -3,9 +3,11 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 )
-// mode 启动方式，是服务端还是客户端
-var mode string
+
 
 //配置解析
 func init() {
@@ -22,7 +24,10 @@ func init() {
 func main()  {
 	//日志设置
 	log.SetFlags(log.LstdFlags)
-	if mode == "server"{
+	//监听停止信号
+	stop := make(chan os.Signal)
+	signal.Notify(stop,syscall.SIGINT,syscall.SIGTERM,syscall.SIGKILL)
+	if isServer() {
 		log.Println("[START]","以服务端(-m server)模式启动")
 		//如果配置文件和参数中都没有拿到端口,则报错
 		if ServerConf.HttpSeverPort <= 0 || ServerConf.TCPServerPort <= 0 {
@@ -35,14 +40,25 @@ func main()  {
 		if ServerConf.HasTSL {
 			go startTLSServer()
 		}
-		//会话回收
-		go lookUpErrorConn()
 	}else {
 		log.Println("[START]","以客户端(-m client)模式启动")
 		parseClientConfig()
 		startClient()
 	}
 	<- stop
+	destroy()
+}
+
+func destroy() {
+	if isServer(){
+		log.Println(TCP,"正在逐个关闭通道....")
+		for s, session := range AllServerSession.AllSession {
+			_ = session.Conn.Close()
+			log.Println(TCP,"域名",s,"通道已经关闭")
+		}
+	}else {
+		log.Println(TCP,"关闭客户端...")
+	}
 }
 
 

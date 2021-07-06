@@ -21,6 +21,9 @@ func tcpReadHandler(tcp *net.TCPConn) {
 		if rErr != nil{
 			log.Println(ERROR,"读取出错了,请检查原因！")
 			time.Sleep(200*time.Millisecond)
+			if isServer(){
+				closeServerSession(tcp)
+			}
 			break
 		}else {
 			//根据类型转发消息
@@ -90,6 +93,8 @@ func readMessage(tcp *net.TCPConn) (*TcpMessage,error) {
 		MessageBody: msgBuf,
 	},nil
 }
+
+
 
 //构建消息体
 func buildMessage(t int8, obj []byte) []byte {

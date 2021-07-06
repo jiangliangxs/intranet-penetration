@@ -9,8 +9,9 @@ import (
 	"sync"
 )
 
-//stop 停止信号
-var stop chan bool
+// mode 启动方式，是服务端还是客户端
+var mode string
+
 
 //AllServerSession 所有服务端会话
 var AllServerSession = ServerStorage{sync.RWMutex{}, map[string]ServerSession{}}
@@ -111,4 +112,6 @@ func GetLocalIP() string {
 	return "127.0.0.1"
 }
 
-
+func isServer() bool{
+	return mode == "server"
+}

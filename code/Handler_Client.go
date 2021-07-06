@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net"
-	"os"
 	"time"
 )
 
@@ -14,8 +13,6 @@ var clientConnect = false
 //启动客户端
 func startClient() {
 	openConnect()
-	<-stop
-	os.Exit(0)
 }
 
 //处理请求

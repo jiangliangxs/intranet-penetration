@@ -35,8 +35,6 @@ func startTcpServer() {
 			go tcpReadHandler(tcp)
 		}
 	}
-	//意外终止
-	stop <- true
 }
 
 //http服务器,用于接受用户的请求
@@ -50,7 +48,6 @@ func startHttpServer() {
 	//意外停止,则终止程序
 	strPort := strconv.Itoa(int(ServerConf.HttpSeverPort))
 	if e := http.ListenAndServe(":"+ strPort, nil); e != nil {
-		stop <- true
 		log.Panicln(HTTP,"服务器closed",e.Error())
 	}
 }
@@ -182,7 +179,16 @@ func writeAuthResponse(message *TcpMessage,tcp *net.TCPConn) {
 	}
 }
 
-
+//关闭serverSession,并移除
+func closeServerSession(tcp *net.TCPConn){
+	for s, session := range AllServerSession.AllSession {
+		if session.Conn == tcp {
+			log.Println(TCP,"域名：",session.Domain,"因读取错误,被移除！")
+			_ = session.Conn.Close()
+			AllServerSession.removeServer(s)
+		}
+	}
+}
 
 
 

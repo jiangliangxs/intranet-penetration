@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -52,20 +51,4 @@ type ServerSession struct {
 	ErrCount int
 	//最后一次请求时间
 	LastRequestTime time.Time
-}
-
-//遍历无效的请求,一切从简的方案，因为服务端端开无法发送请求，客户端完全可以重连，这个只是为了回收资源
-func lookUpErrorConn(){
-	ticker := time.NewTicker(time.Minute)
-	for true {
-		<- ticker.C
-		for _, session := range AllServerSession.AllSession {
-			//连续出错三次，清理掉了
-			if session.ErrCount > 2 {
-				_ = session.Conn.Close()
-				AllServerSession.removeServer(session.Domain)
-				log.Println(TCP,"域名：",session.Domain,"被清理了,因为连续",session.ErrCount,"次处理请求错误")
-			}
-		}
-	}
 }

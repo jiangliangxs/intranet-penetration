@@ -35,6 +35,8 @@ func main()  {
 		if ServerConf.HasTSL {
 			go startTLSServer()
 		}
+		//会话回收
+		go lookUpErrorConn()
 	}else {
 		log.Println("[START]","以客户端(-m client)模式启动")
 		parseClientConfig()

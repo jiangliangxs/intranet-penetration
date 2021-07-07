@@ -32,27 +32,21 @@ func tcpReadHandler(tcp *net.TCPConn) {
 
 			case 2://服务端->客户端请求，客户端读取后负责请求处理
 				request := &UserRequest{}
-				err := json.Unmarshal(message.MessageBody, request)
-				if err != nil {
-					log.Println(ERROR, "消息解析失败,内容为:",request)
-				}
+				_ = json.Unmarshal(message.MessageBody, request)
 				clientRequest(*request,tcp)
 			case 3://客户端->服务端响应，服务端拿到响应后，交给等到响应的writer写回用户端
 				userResponse := &UserResponse{}
 				_ = json.Unmarshal(message.MessageBody, userResponse)
 				if wait,ok := ResponseWriterMap[userResponse.Id];ok {
 					wait.ResponseChan <- *userResponse
-					log.Println(TCP, "收到客户端http响应消息,响应码:",userResponse.StatusCode)
 				}
 			case 4://客户端->服务端认证，在服务端注册域名后，即可订阅该域名的http请求
-				log.Println(TCP, "接收到客户端认证消息 begin")
 				writeAuthResponse(message, tcp)
-				log.Println(TCP, "已经将认证消息响应给客户端了 done")
 			case 5://服务端->客户端认证响应，客户端拿到请求后，成功则打印，失败则终止程序
 				response := &LoginResponse{}
 				_ = json.Unmarshal(message.MessageBody, response)
 				if response.Status == 0 {
-					log.Panic(TCP,"服务认证失败:",response.Message)
+					log.Panicln(TCP,"服务认证失败:",response.Message)
 				}else {
 					log.Println(TCP,"服务认证成功:",response.Message)
 				}

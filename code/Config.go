@@ -17,10 +17,10 @@ var mode string
 var AllServerSession = ServerStorage{sync.RWMutex{}, map[string]ServerSession{}}
 
 //HTTP 日志头
-var HTTP  = "[-HTTP]"
+var HTTP  = "[_HTTP]"
 
 //TCP 日志头
-var TCP  = "[--TCP]"
+var TCP  = "[__TCP]"
 
 //ERROR 错误日志头
 var ERROR  = "[ERROR]"

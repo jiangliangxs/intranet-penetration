@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -63,20 +64,23 @@ func startTLSServer() {
 
 //请求转发
 func forwardRequest(host string,writer http.ResponseWriter, request *http.Request) {
-	log.Println(HTTP,"来自:",host,"请求:",request.RequestURI)
+	startTime := time.Now().UnixNano()//请求开始纳秒时间戳
+	rId := GetId()//请求唯一ID
+	response := &UserResponse{}//声明返回
+	ip := strings.Split(request.RemoteAddr, ":")[0]//请求的IP
+	log.Println(HTTP,"序号:",rId,"域名:"+host,"来源:"+ip,"请求:"+request.URL.Path)
 	//查找请求的链接
 	serverSession := AllServerSession.getSessionByDomain(host)
 	if serverSession != nil {
 		//写入用户请求(根据ID确定请求唯一性)
-		var rId = GetId()
-		log.Println(HTTP,"向Tcp通道写入请求,请求ID:",rId)
+
 		writeErr := writeRequest(rId,request, serverSession.Conn)
 		if writeErr != nil {
 			//连续错误次数
 			serverSession.ErrCount ++
-			log.Println(ERROR,writeErr.Error())
-			us := NewErrUserResponse("写入客户端通道时出错了,可能客户端已经断开了",rId)
-			writeResponse(*us,&writer)
+			log.Println(ERROR,serverSession.ErrCount,writeErr.Error())
+			response = NewErrUserResponse("写入客户端通道时出错了,可能客户端已经断开了",rId)
+			writeResponse(*response,&writer)
 		}else {
 			//设置最新请求时间
 			serverSession.ErrCount = 0
@@ -85,17 +89,18 @@ func forwardRequest(host string,writer http.ResponseWriter, request *http.Reques
 			uc := make(chan UserResponse)
 			AddResponseWriter(rId,uc)
 			userResponse := <- uc
-			//写返回数据
-			log.Println(HTTP,"得到响应数据,进行数据会写,响应ID:",userResponse.Id)
+			response = &userResponse
 			//关闭通道
 			close(uc)
 			writeResponse(userResponse,&writer)
 		}
 	}else {
-		log.Println(HTTP,"没有找到对应的ServerSession")
-		us := NewErrUserResponse("客户端并没有注册,请求无法转发",500)
-		writeResponse(*us,&writer)
+		log.Println(ERROR,"没有找到对应的ServerSession")
+		response = NewErrUserResponse("客户端并没有注册,请求无法转发",500)
+		writeResponse(*response,&writer)
 	}
+	requestTime := (time.Now().UnixNano() - startTime) / 1e6 //请求耗时
+	log.Println(HTTP,"序号:",rId,"响应码:"+strconv.Itoa(response.StatusCode),"耗时:" +strconv.Itoa(int(requestTime))+"ms")
 }
 
 //处理响应

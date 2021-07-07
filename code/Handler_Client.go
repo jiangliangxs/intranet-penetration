@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -17,8 +18,9 @@ func startClient() {
 
 //处理请求
 func clientRequest(request UserRequest,tcp *net.TCPConn) {
+	startTime := time.Now().UnixNano()//请求开始纳秒时间戳
 	targetHost := ClientConf.getTargetByServerHost(request.Host)
-	log.Println(HTTP,"请求ID:",request.Id,"目标地址："+targetHost,request.URL.Path)
+	log.Println(HTTP,"序号:",request.Id,"目标地址："+targetHost+request.URL.Path)
 	do, e := HttpClient.Do(request.parseToHttpRequest("http", targetHost))
 	userResponse := &UserResponse{}
 	if e == nil {
@@ -30,7 +32,8 @@ func clientRequest(request UserRequest,tcp *net.TCPConn) {
 	}
 	responseBytes, _ := json.Marshal(*userResponse)
 	_, err := tcp.Write(buildMessage(3, responseBytes))
-	log.Println(TCP,"响应ID:",userResponse.Id,"响应:",userResponse.StatusCode)
+	requestTime := (time.Now().UnixNano() - startTime) / 1e6 //请求耗时
+	log.Println(TCP,"序号:",userResponse.Id,"响应码:"+strconv.Itoa(userResponse.StatusCode),"耗时:"+strconv.Itoa(int(requestTime))+"ms")
 	if err != nil {
 		log.Println(TCP,"写入响应是发生错误:",err.Error())
 	}

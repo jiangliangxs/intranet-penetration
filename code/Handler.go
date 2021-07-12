@@ -78,7 +78,8 @@ func readMessage(tcp *net.TCPConn) (*TcpMessage,error) {
 	msgBuf := make([]byte, messageLength)
 	_, readMsgErr := io.ReadFull(tcp, msgBuf)
 	if readMsgErr != nil {
-		log.Panicln(TCP,"读取消息体发生错误:",readMsgErr.Error())
+		log.Println(TCP,"读取消息体发生错误:",readMsgErr.Error())
+		return nil, readMsgErr
 	}
 	//对消息解体
 	return &TcpMessage{

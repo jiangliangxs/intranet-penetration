@@ -13,7 +13,13 @@ var clientConnect = false
 
 //启动客户端
 func startClient() {
-	openConnect()
+	tcp,err := openConnect()
+	if err != nil{
+		log.Panicln(ERROR,"客户端启动失败!",err.Error())
+	}else {
+		//正常链接的启动心条
+		go lookUpHeat(tcp)
+	}
 }
 
 //处理请求
@@ -43,18 +49,29 @@ func clientRequest(request UserRequest,tcp *net.TCPConn) {
 func lookUpHeat(tcp *net.TCPConn) {
 	count ,max := 0,3
 	ticker := time.NewTicker(10 * time.Second)
+	needWrite := true
+	var err error = nil
 	for true {
 		<- ticker.C
-		_, err := tcp.Write(buildMessage(1,[]byte("ping")))
+		if needWrite {
+			_, err = tcp.Write(buildMessage(1, []byte("ping")))
+		}
 		if err != nil {
 			clientConnect = false
 			count++
-			log.Println(TCP,"写入心跳出错:",err.Error())
-			log.Println(TCP,"第",count,"次发送心跳包失败",max,"次则重连程序")
-			if count >= max {
-				log.Println(TCP,"第",count,"次发送心跳包失败,重新链接了")
-				ticker.Stop()
-				reconnect(tcp)
+			if count < 3 {
+				log.Println(TCP,"写入心跳出错:",err.Error())
+				log.Println(TCP,"第",count,"次发送心跳包失败",max,"次则重连程序")
+			} else {
+				log.Println(TCP,"第",count-2,"尝试重新链接")
+				tcp,err = openConnect()
+				//链接成功,则重新计算失败错误次数
+				if err == nil{
+					count =0
+					needWrite = true
+				} else {
+					needWrite = false
+				}
 			}
 		}else {
 			clientConnect = true
@@ -78,29 +95,25 @@ func reconnect(tcp *net.TCPConn) {
 }
 
 //打开链接
-func openConnect() {
+func openConnect() (*net.TCPConn, error) {
 	//批量认证
 	addr, _ := net.ResolveTCPAddr("tcp", ClientConf.ServerHost)
 	tcp, err := net.DialTCP("tcp", nil, addr)
-	if err != nil {
-		log.Panicln(TCP, "无法与远程服务器建立链接,请检查远程服务器是否开启")
-	}else {
+	if err == nil {
 		log.Println(TCP, "已经初步链接,本地打开地址:",tcp.LocalAddr())
-	}
-
-	request := LoginRequest{}
-	request.ClientIp = ClientConf.ClientIp
-	_ = tcp.SetKeepAlivePeriod(time.Minute)
-	go tcpReadHandler(tcp)
-	for _, info := range ClientConf.Clients {
-		request.Domain = info.Domain
-		log.Println(TCP, "进行认证,认证的域名是:", request.Domain)
-		requestBytes, _ := json.Marshal(request)
-		_, err := tcp.Write(buildMessage(4, requestBytes))
-		if err != nil {
-			log.Panicln(TCP,"无法链接服务端,出错了,域名:",request.Domain)
+		request := LoginRequest{}
+		request.ClientIp = ClientConf.ClientIp
+		_ = tcp.SetKeepAlivePeriod(time.Minute)
+		go tcpReadHandler(tcp)
+		for _, info := range ClientConf.Clients {
+			request.Domain = info.Domain
+			log.Println(TCP, "进行认证,认证的域名是:", request.Domain)
+			requestBytes, _ := json.Marshal(request)
+			_, err = tcp.Write(buildMessage(4, requestBytes))
+			if err == nil {
+				log.Println(TCP,"无法链接服务端,出错了,域名:",request.Domain)
+			}
 		}
 	}
-	go lookUpHeat(tcp)
-	clientConnect = true
+	return tcp,err
 }

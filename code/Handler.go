@@ -20,6 +20,7 @@ func tcpReadHandler(tcp *net.TCPConn) {
 		//如果消息有错误,则不处理
 		if rErr != nil{
 			log.Println(ERROR,"读取出错了,请检查原因！")
+			log.Println(ERROR,"错误信息:"+rErr.Error())
 			time.Sleep(200*time.Millisecond)
 			if isServer(){
 				closeServerSession(tcp)
